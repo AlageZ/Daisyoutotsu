@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>crisp-game-lib</title>
+    <meta
+        name="viewport"
+        content="width=device-width, height=device-height,
+        user-scalable=no, initial-scale=1, maximum-scale=1"
+    />
+    <script src="https://unpkg.com/sounds-some-sounds@1.0.5/build/index.js"></script>
+    <script src="https://unpkg.com/gif-capture-canvas@1.1.0/build/index.js"></script>
+    <script src="https://unpkg.com/terser@4.6.11/dist/bundle.min.js"></script>
+    <script src="https://unpkg.com/pixi.js@5.3.0/dist/pixi.min.js"></script>
+    <script src="https://unpkg.com/pixi-filters@3.1.1/dist/pixi-filters.js"></script>
+    <script>
+        var module = {};
+    </script>
+    <script src="https://unpkg.com/lodash.clonedeep@4.5.0/index.js"></script>
+    <script src="https://abagames.github.io/crisp-game-lib/bundle.js"></script>
+
+<script>
+const G = {WIDTH:100,HEIGHT:100}
+title = "daisyoutotsu";
+
+description = `
+[Tap]     Stop
+[Hold]    Charge
+[Release] Jump
+`;
+
+characters = [
+    `
+   CCc
+cc   c
+  CCCc
+bCrCCC
+ CCCCC
+ cb cb
+    `,
+    `
+  CCc 
+     c
+ccCCc
+bCrCCC
+ CCCCC
+ bc bc
+    `,
+    `
+cCC   
+c   cc
+cCCC  
+CCCrCb
+CCCCC 
+bc bc 
+    `,
+    `
+ cCC  
+c     
+ cCCcc
+CCCrCb
+CCCCC 
+cb cb 
+    `,
+    `
+ cccc 
+CbyybC
+CyyyyC
+  yyY 
+ YYYYY
+  Y Y 
+    `,
+    `
+ cccc 
+CbyybC
+CyyyyC
+ Yyy  
+YYYYY 
+ Y Y  
+    `
+];
+
+options = {
+    viewSize: { x: G.WIDTH, y: G.HEIGHT },
+    isPlayingBgm: true,
+    isReplayEnabled: true,
+    seed: 2810,
+    isCapturing: true,
+    isCapturingGameCanvasOnly: true,
+    captureCanvasScale:2,
+    isShowingScore:true
+};
+let player
+let crscs
+let nextcrscticks
+let expls
+let explevel
+let presscharge
+let cameraY
+let combo
+let dfer = 0
+function update() {
+    if (!ticks) {
+        player = {
+            pos:vec(G.WIDTH / 2,G.HEIGHT / 2),
+            vy:1,
+            mp:50,
+            posZ:0,
+            speedZ:0,
+        }
+        crscs = []
+        expls = []
+        nextcrscticks = 0
+        explevel = 6
+        presscharge = 0
+        cameraY = 0
+        combo = 1
+        dfer = 0
+    }else{
+        df = false
+        if (expls.length == 0){
+            explevel = 6
+        }
+        if (crscs.length == 0){
+            nextcrscticks = 0
+        }
+        cameraY = player.pos.y-G.HEIGHT/2
+        nextcrscticks--
+        if (nextcrscticks < 0){
+            const side = rnd() < 0.5 ? -1 : 1;
+            const av = rnd(5+difficulty/2, difficulty+10);
+            const movscic = floor(rndi(100, 200) / sqrt(difficulty))
+            crscs.push({
+                pos: vec(side < 0 ? 0 : G.WIDTH,rndi(cameraY,cameraY+G.HEIGHT+30)),
+                side,
+                speed: av,
+                nextmovetick: rndi(0,30),
+                movscic,
+                anim:-1,
+                nact:"x",
+                animcic:rndi(13,24)
+
+            });
+            nextcrscticks = rnd(10, 60) / sqrt(difficulty);
+        }
+        if (input.isPressed){
+            presscharge += 1
+            if ([40,80,120].includes(presscharge)){
+                play("powerUp")
+            }
+        }else{
+            if (input.isJustReleased){
+                if (player.posZ == 0){
+                    player.speedZ = 3 + (presscharge >= 80 ? 1 : 0) + (presscharge >= 120 ? 1 : 0)
+                    play("jump")
+
+                }
+            }
+            if (player.posZ == 0){
+                player.pos.y += player.vy * 0.5
+            }
+            presscharge = 0
+        }
+        remove(expls,c=>{
+            if (c.mode == "spread"){
+                c.r += 0.5
+                if (c.r >= explevel){
+                    c.mode = "ender"
+                }
+            }else if (c.mode == "ender"){
+                c.r -= 1
+                if (c.r <= 0){
+                    return true
+                }
+            }
+            color("black")
+            arc(c.pos.x,c.pos.y-cameraY,c.r,1)
+        })
+        arc(player.pos.x,player.pos.y+2-cameraY,1)
+        remove(crscs,c=>{
+            
+            if (c.pos.x <= -3 || G.WIDTH+3 <= c.pos.x){
+                return true
+            }
+            if (ticks >= c.nextmovetick){
+                c.nact = "x"
+                if (c.side == 1) {
+                    if (c.pos.x < G.WIDTH / 2) {
+                        c.nact = "x"
+                    }
+                } else {
+                    if (c.pos.x > G.WIDTH / 2) {
+                        c.nact = "x"
+                    }
+                }
+                if ((c.pos.x > player.pos.x ? 1 : -1) == c.side){
+                    c.nact = "y"
+                }
+                if (c.pos.y - 3 <= player.pos.y && player.pos.y <= c.pos.y + 3) {
+                    c.nact = "x"
+                }
+                
+                c.nextmovetick = ticks + rndi(0, 9) + c.movscic
+            }
+            if (ticks%c.animcic == 0){
+                c.anim *= -1
+            }
+            if (c.nact == "x"){
+                c.pos.x += c.speed * c.side * -1 / 10
+            }else{
+                if (!(c.pos.y - 3 <= player.pos.y && player.pos.y <= c.pos.y + 3)){
+                    if (c.pos.y <= player.pos.y+10 || input.isPressed || player.posZ!=0){
+                        c.pos.y += c.speed * (c.pos.y > player.pos.y ? -1 : 1) / 10
+
+                    }
+                }
+            }
+            let f = false
+            expls.forEach(x => {
+                if (x.mode == "spread"){
+                    if (x.r >= c.pos.distanceTo(x.pos)){
+                        f = true
+                    }
+                }
+            });
+            color("black")
+            arc(c.pos.x,c.pos.y+2-cameraY,1)
+            let ch = char(addWithCharCode(addWithCharCode("a", c.side == 1 ? 0 : 2), (c.anim + 1) / 2), c.pos.x,c.pos.y-cameraY)
+            if (c.side == 1){
+                if (ch.isColliding.char.c || ch.isColliding.char.d){
+                    f = true
+                }
+            }else{
+                if (ch.isColliding.char.a || ch.isColliding.char.b) {
+                    f = true
+                } 
+            }
+            if (f){
+                expls.push({
+                    pos:c.pos,
+                    mode:"spread",
+                    r:1
+                })
+                df = true
+                play("explosion")
+                explevel += 1
+                addScore(combo, c.pos.x,c.pos.y-cameraY)
+                return true
+            }
+        })
+        player.posZ += player.speedZ
+        player.speedZ -= 0.15
+        if (player.posZ <= 0){
+            player.posZ = 0
+            player.speedZ = 0
+        }
+        color("black")
+        if (df){
+            combo += 1
+            dfer = 180
+        }else{
+            dfer -= 1
+            if (dfer <= 0){
+                combo = 1
+                dfer = 0
+            }
+        }
+        ch = char(addWithCharCode("e", floor(ticks / 10) % 2), player.pos.x,floor(player.pos.y-player.posZ-cameraY))
+        if (player.posZ == 0){
+            if (ch.isColliding.char.a || ch.isColliding.char.b || ch.isColliding.char.c || ch.isColliding.char.d) {
+                end()
+            }
+
+        }
+    }
+}
+
+addEventListener("load", onLoad);
+</script>
+
+</head>
+<body style="background: #ddd">
+    <span style="position:absolute;bottom:0;left:0;display:block;">©シャングリラ・<br>フロンティア/<br>硬梨菜/不二涼介/<br>講談社/クソゲーコンペ</span>
+</body>
+</html> 
