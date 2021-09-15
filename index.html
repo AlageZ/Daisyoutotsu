@@ -99,6 +99,7 @@ let presscharge
 let cameraY
 let combo
 let dfer = 0
+let actv = 0
 function update() {
     if (!ticks) {
         player = {
@@ -145,6 +146,7 @@ function update() {
         }
         if (input.isPressed){
             presscharge += 1
+            actv = 240
             if ([40,80,120].includes(presscharge)){
                 play("powerUp")
             }
@@ -235,7 +237,7 @@ function update() {
                     f = true
                 } 
             }
-            if (f){
+            if (f && actv > 0){
                 expls.push({
                     pos:c.pos,
                     mode:"spread",
@@ -271,6 +273,9 @@ function update() {
                 end()
             }
 
+        }
+        if (actv > 0){
+            actv--
         }
     }
 }
