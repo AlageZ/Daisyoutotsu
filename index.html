@@ -181,7 +181,7 @@ function update() {
         arc(player.pos.x,player.pos.y+2-cameraY,1)
         remove(crscs,c=>{
             
-            if (c.pos.x <= -3 || G.WIDTH+3 <= c.pos.x){
+            if (c.pos.x <= -3 || G.WIDTH+3 <= c.pos.x || c.pos.y-cameraY <= -G.HEIGHT-3 || G.HEIGHT*2+3 <= c.pos.y-cameraY){
                 return true
             }
             if (ticks >= c.nextmovetick){
