@@ -151,7 +151,7 @@ function update() {
         }else{
             if (input.isJustReleased){
                 if (player.posZ == 0){
-                    player.speedZ = 3 + (presscharge >= 80 ? 1 : 0) + (presscharge >= 120 ? 1 : 0)
+                    player.speedZ = 3 +(presscharge >= 40 ? 1 : 0) +(presscharge >= 80 ? 1 : 0) + (presscharge >= 120 ? 1 : 0)
                     play("jump")
 
                 }
